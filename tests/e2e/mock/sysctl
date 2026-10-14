@@ -1,0 +1,3 @@
+#!/bin/bash
+# Kernel-wide sysctls are read-only in a rootless container; ignore errors.
+/usr/sbin/sysctl "$@" 2>/dev/null; exit 0

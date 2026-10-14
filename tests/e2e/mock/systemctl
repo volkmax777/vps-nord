@@ -1,0 +1,23 @@
+#!/bin/bash
+# Minimal systemd stand-in for a container without systemd.
+q=0; args=()
+for a in "$@"; do case $a in -q|--quiet) q=1;; --now) now=1;; *) args+=("$a");; esac; done
+cmd=${args[0]:-}; unit=${args[1]:-}
+st=/run/mocksd; mkdir -p $st
+case "$cmd" in
+  daemon-reload|enable) [[ $cmd == enable && ${now:-} == 1 ]] && "$0" start "$unit"; exit 0 ;;
+  disable) [[ ${now:-} == 1 ]] && "$0" stop "$unit"; exit 0 ;;
+  is-active)
+    if [[ -e "$st/$unit" ]]; then [[ $q == 1 ]] || echo active; exit 0; else [[ $q == 1 ]] || echo inactive; exit 3; fi ;;
+  start|restart|stop)
+    case "$unit" in
+      wg-quick@*) i=${unit#wg-quick@}
+        if [[ $cmd != start ]]; then wg-quick down "$i" >/dev/null 2>&1; rm -f "$st/$unit"; fi
+        if [[ $cmd != stop ]]; then wg-quick up "$i" >/dev/null 2>&1 && touch "$st/$unit" || exit 1; fi ;;
+      nord-policy.service)
+        [[ $cmd != start ]] && /usr/local/bin/vps-nord policy down
+        [[ $cmd != stop ]] && /usr/local/bin/vps-nord policy up && touch "$st/$unit" ;;
+      *) if [[ $cmd == stop ]]; then rm -f "$st/$unit"; else touch "$st/$unit"; fi ;;
+    esac; exit 0 ;;
+esac
+exit 0

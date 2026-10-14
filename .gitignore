@@ -1,0 +1,22 @@
+# IDE & editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# AI assistant configs
+.claude/
+.agents/
+
+# Temporary files & logs
+*.tmp
+*.bak
+*.log
+
+# Local test configurations and secrets
+*.token
+*.key
+.env
+.env.*

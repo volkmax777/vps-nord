@@ -1,0 +1,12 @@
+#!/bin/bash
+# Serves NordVPN API fixtures; everything else goes to the real curl.
+for a in "$@"; do
+  case "$a" in
+    *api.nordvpn.com/v1/servers/countries*) cat /mock/countries.json; exit 0 ;;
+    *api.nordvpn.com/v1/servers/recommendations*) cat /tmp/fixtures/reco.json; exit 0 ;;
+    *api.nordvpn.com/v1/servers\?*) cat /tmp/fixtures/reco.json; exit 0 ;;
+    *api.nordvpn.com/v1/users/services/credentials*) cat >/dev/null; echo "{\"nordlynx_private_key\":\"$(cat /tmp/fixtures/client.key)\"}"; exit 0 ;;
+    *api.nordvpn.com/v1/helpers/ips/insights*) echo '{"ip":"203.0.113.9","country":"Germany","city":"Berlin","isp":"mock","protected":true}'; exit 0 ;;
+  esac
+done
+exec /usr/bin/curl "$@"
