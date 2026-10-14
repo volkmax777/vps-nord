@@ -28,7 +28,7 @@ cat > /tmp/fixtures/reco.json <<J
  {"hostname":"de2.mock","station":"127.0.0.2","load":12,"status":"online","technologies":[{"identifier":"wireguard_udp","metadata":[{"name":"public_key","value":"$SP"}]}]}]
 J
 # The host kernel already has the module; modprobe cannot run rootless.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329  # SC2317 on shellcheck < 0.10
 modprobe() { :; }; export -f modprobe
 hs() { wg show nord latest-handshakes | awk '{print $2}'; }
 conf() { grep "^$1=" /etc/vps-nord/config | cut -d= -f2-; }
