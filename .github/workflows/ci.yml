@@ -50,3 +50,24 @@ jobs:
         env:
           ENGINE: docker
         run: tests/e2e/run.sh
+
+  release:
+    # A tag v* publishes a release only after every check passed on it. The
+    # asset is the installer with VERSION stamped; `vps-nord update` and the
+    # install one-liner download it via releases/latest/download.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [shellcheck, handshake, e2e]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stamp the version
+        run: |
+          sed -i "s/^VERSION=\"dev\"$/VERSION=\"${GITHUB_REF_NAME}\"/" nord_install.sh
+          grep -qx "VERSION=\"${GITHUB_REF_NAME}\"" nord_install.sh
+          bash -n nord_install.sh
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" nord_install.sh --title "$GITHUB_REF_NAME" --generate-notes

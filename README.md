@@ -65,16 +65,20 @@ account and works for every server, so changing region only changes the peer.
 One-line install:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh) --token <token> --region DE
+bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh) --token <token> --region DE
 ```
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh) --key <key> --region de/berlin
+bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh) --key <key> --region de/berlin
 ```
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh)   # asks for a key or token
+bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh)   # asks for a key or token
 ```
+
+To pin a specific version, use
+`https://github.com/volkmax777/vps-nord/releases/download/<tag>/nord_install.sh`
+instead.
 
 Or from a local copy:
 
@@ -102,7 +106,10 @@ server does not change:** if the tunnel is already up with the same key and
 `--region` is not given (or is the same as before), the installer keeps the
 live peer and only rewrites the config, so the session is not dropped.
 
-So updating is just `vps-nord update`, and the server changes only on an
+So updating is just `vps-nord update`: it downloads the installer from the
+latest release (or from the URL given with `--url` at install time) and
+re-runs it; `vps-nord status` shows the installed version. The server changes
+only on an
 explicit command (`vps-nord region`, `vps-nord switch`) or when the watchdog
 repairs an outage.
 
@@ -294,7 +301,7 @@ The script is idempotent, so it fits into playbooks:
 ```yaml
 - name: Download the vps-nord installer
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh
+    url: https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh
     dest: /usr/local/sbin/nord_install.sh
     mode: "0755"
 

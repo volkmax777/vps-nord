@@ -8,9 +8,9 @@
 # watchdog that repairs a broken tunnel on its own.
 #
 # One-line install:
-#   bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh) --token <token> --region DE
-#   bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh) --key <key> --region de/berlin
-#   bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh)   # asks for key/token
+#   bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh) --token <token> --region DE
+#   bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh) --key <key> --region de/berlin
+#   bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh)   # asks for key/token
 #
 # Use `bash <(...)`, not `curl | bash`: with the latter stdin is taken by the
 # script itself and there is nothing left to read the key from. A local copy
@@ -26,6 +26,9 @@
 
 set -euo pipefail
 
+# Replaced with the tag by the release workflow; "dev" means a checkout of main.
+VERSION="dev"
+
 # Empty = "not set on the command line". Defaults are filled in below, after
 # looking at the config of a previous install.
 IFACE=""
@@ -40,9 +43,9 @@ ADOPT=0
 KEY=""
 TOKEN=""
 WATCHDOG=1
-# Where `vps-nord update` downloads the installer from. Defaults to the
-# repository, can be overridden with --url.
-DEFAULT_SRC_URL="https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh"
+# Where `vps-nord update` downloads the installer from: the latest release by
+# default, can be overridden with --url.
+DEFAULT_SRC_URL="https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh"
 SRC_URL=""
 
 CONF_DIR=/etc/vps-nord
@@ -55,7 +58,7 @@ say() { echo "==> $*"; }
 
 usage() {
   cat <<'USAGE'
-bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh) [options]
+bash <(curl -fsSL https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh) [options]
 
   --token <t>     NordVPN access token; the private key is fetched with it
   --key <k>       NordLynx private key directly (44 base64 characters)
@@ -66,7 +69,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/volkmax777/vps-nord/main/nor
   --mtu <n>       MTU, default 1420
   --fwmark <n>    also route packets with this firewall mark into the tunnel
                   (off by default; e.g. 254 if mark 255 is used by another tunnel)
-  --url <u>       installer URL for `vps-nord update` (default: the repository)
+  --url <u>       installer URL for `vps-nord update` (default: latest release)
   --no-watchdog   do not install the tunnel check timer
   -h, --help      this help
 
@@ -290,10 +293,11 @@ NORD_SERVER=$(printf '%q' "${NORD_SERVER:-}")
 NORD_ENDPOINT=$(printf '%q' "${NORD_ENDPOINT:-}")
 NORD_PUBKEY=$(printf '%q' "${NORD_PUBKEY:-}")
 NORD_LOAD=$(printf '%q' "${NORD_LOAD:-}")
+NORD_VERSION=$(printf '%q' "${NORD_VERSION:-unknown}")
 # Installer URL for "vps-nord update", set with --url.
 # Keep it quoted: the heredoc is unquoted, and backticks in this comment would
 # be executed as a command on every config write.
-NORD_SRC_URL=$(printf '%q' "${NORD_SRC_URL:-https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh}")
+NORD_SRC_URL=$(printf '%q' "${NORD_SRC_URL:-https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh}")
 EOF
   chmod 600 "$CONF.new"
   mv "$CONF.new" "$CONF"
@@ -641,6 +645,7 @@ cmd_status() {
   if [[ -n ${NORD_SERVER:-} ]]; then
     server="$NORD_SERVER  ${NORD_ENDPOINT:-}  load ${NORD_LOAD:-?}%"
   fi
+  printf '%-11s %s\n' "Version:" "${NORD_VERSION:-unknown}"
   printf '%-11s %s\n' "Interface:" "$IFACE ($state)"
   printf '%-11s %s\n' "Region:" "${NORD_REGION_LABEL:-—} (requested: ${NORD_REGION:-—})"
   printf '%-11s %s\n' "Server:" "$server"
@@ -818,7 +823,7 @@ cmd_update() {
   elif [[ -n "${1:-}" && "${1:-}" != -* ]]; then
     url="$1"
   fi
-  url="${url:-${NORD_SRC_URL:-https://raw.githubusercontent.com/volkmax777/vps-nord/main/nord_install.sh}}"
+  url="${url:-${NORD_SRC_URL:-https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh}}"
   local tmp rc=0
   tmp=$(mktemp)
   # shellcheck disable=SC2064
@@ -925,6 +930,7 @@ NORD_SERVER=$(printf '%q' "${OLD_SERVER:-}")
 NORD_ENDPOINT=$(printf '%q' "${OLD_ENDPOINT:-}")
 NORD_PUBKEY=$(printf '%q' "${OLD_PUBKEY:-}")
 NORD_LOAD=$(printf '%q' "${OLD_LOAD:-}")
+NORD_VERSION=$(printf '%q' "$VERSION")
 NORD_SRC_URL=$(printf '%q' "$SRC_URL")
 EOF
 chmod 600 "$CONF"

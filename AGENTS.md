@@ -21,7 +21,7 @@ tests/e2e/run.sh         runs tests/e2e/scenario.sh in a Debian container
 tests/e2e/scenario.sh    end-to-end checks (install, re-run, switch, watchdog, update, uninstall)
 tests/e2e/mock/          fake NordVPN API (curl), fake systemd (systemctl), sysctl wrapper
 tests/handshake.sh       kernel-level check of the peer-switch behaviour
-.github/workflows/ci.yml shellcheck + both tests
+.github/workflows/ci.yml shellcheck + both tests; release on tag v*
 ```
 
 What the installer puts on a node:
@@ -107,8 +107,17 @@ arguments). Therefore:
 - An option that is removed must not break a config that still has it.
 - Systemd unit names, the `vps-nord` log tag, table 51821 and priorities
   3100/3101 are relied on by existing installs and by users' Xray configs.
-- The default update URL is `main` of this repository; anything merged there
-  reaches nodes on their next update.
+- The default update URL is the latest release
+  (`releases/latest/download/nord_install.sh`); a release reaches nodes on
+  their next `vps-nord update`. `main` is only what the next release will be.
+
+## Releases
+
+Push a tag `vX.Y.Z` on a commit of `main`. CI runs all checks on the tag and
+only then the `release` job stamps `VERSION="vX.Y.Z"` into the installer and
+publishes it as the release asset. In the repository `VERSION` stays `"dev"`;
+the installer writes it to the config as `NORD_VERSION`, and
+`vps-nord status` shows it.
 
 ## NordVPN API
 

@@ -39,6 +39,8 @@ check "installer exits 0"            grep -q 'Next, add an outbound' /tmp/instal
 check "connected to de1.mock"        test "$(conf NORD_SERVER)" = de1.mock
 check "handshake present"            test "$(hs)" -gt 0
 check "mark rule and blackhole"      bash -c 'vps-nord policy status | grep -q "rule yes, blackhole yes"'
+check "version recorded and shown"   bash -c 'vps-nord status | grep -q "^Version: *dev$"'
+check "updates from the latest release" grep -q '^NORD_SRC_URL=https://github.com/volkmax777/vps-nord/releases/latest/download/nord_install.sh$' /etc/vps-nord/config
 
 echo "== 2. re-run without options"
 h1=$(hs); sleep 2
