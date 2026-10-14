@@ -1,5 +1,6 @@
 #!/bin/bash
 # Minimal systemd stand-in for a container without systemd.
+echo "systemctl $*" >> /tmp/systemctl.log
 q=0; args=()
 for a in "$@"; do case $a in -q|--quiet) q=1;; --now) now=1;; *) args+=("$a");; esac; done
 cmd=${args[0]:-}; unit=${args[1]:-}

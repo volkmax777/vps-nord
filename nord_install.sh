@@ -796,8 +796,12 @@ cmd_policy() {
       if iface_up; then
         ip -4 route replace default dev "$IFACE" table "$TABLE" metric 100
       fi
-      ip -4 rule del fwmark "$FWMARK" table "$TABLE" priority 3101 2>/dev/null || true
-      ip -4 rule add fwmark "$FWMARK" table "$TABLE" priority 3101
+      # Add the rule only if it is missing: del + add would leave a moment in
+      # which marked traffic has no rule and leaves with the node's real IP.
+      if ! ip -4 rule list pref 3101 2>/dev/null \
+           | grep -q "fwmark $(printf '0x%x' "$FWMARK") lookup $TABLE"; then
+        ip -4 rule add fwmark "$FWMARK" table "$TABLE" priority 3101
+      fi
       log "mark $FWMARK policy enabled (table $TABLE)"
       ;;
     down)
@@ -956,9 +960,21 @@ ExecStop=$CLI policy down
 [Install]
 WantedBy=multi-user.target
 EOF
+  # A mark changed on a re-run: drop the rule for the old one. The blackhole
+  # and the new rule are set below, so marked traffic is never unrouted.
+  if [[ -n ${OLD_FWMARK:-} && $OLD_FWMARK != "$FWMARK" ]]; then
+    ip -4 rule del fwmark "$OLD_FWMARK" table "$TABLE" priority 3101 2>/dev/null || true
+  fi
   systemctl daemon-reload
   systemctl -q enable nord-policy.service
-  systemctl restart nord-policy.service
+  # Never restart the unit: its stop removes the rule and the blackhole, and
+  # until the start puts them back marked traffic would bypass the tunnel.
+  # `policy up` on an active unit is idempotent and keeps both in place.
+  if systemctl is-active --quiet nord-policy.service; then
+    "$CLI" policy up
+  else
+    systemctl start nord-policy.service
+  fi
   say "mark $FWMARK → table $TABLE, blackhole set"
 fi
 

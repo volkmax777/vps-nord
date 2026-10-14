@@ -50,7 +50,9 @@ Each of these exists because the alternative failed in practice or in a test.
    and marked traffic leaks with the node's real IP. The tunnel route has
    metric 100 and wins while the interface exists. `policy up` adds the
    blackhole before the rule; `policy down` removes the rule first. `PostDown`
-   deletes only its own route — never flush the table.
+   deletes only its own route — never flush the table. A re-run never
+   restarts `nord-policy` (its stop removes the rule): it runs the idempotent
+   `policy up`, which adds the rule only if missing, never del + add.
 3. **Switching servers removes the old peer first** (`apply_conf`). All
    servers in a NordVPN cluster share one peer public key; `wg syncconf` with
    the same key only changes the endpoint and keeps the old session, and the

@@ -44,10 +44,16 @@ check "updates from the latest release" grep -q '^NORD_SRC_URL=https://github.co
 
 echo "== 2. re-run without options"
 h1=$(hs); sleep 2
+: > /tmp/systemctl.log
+ip monitor rule > /tmp/rules.log 2>&1 & mon=$!
 bash /src/nord_install.sh >/tmp/rerun.log 2>&1
+sleep 0.5; kill "$mon" 2>/dev/null
 check "server kept"                  test "$(conf NORD_SERVER)" = de1.mock
 check "session kept (same handshake)" test "$(hs)" = "$h1"
 check "no DNS line in wg config"     bash -c '! grep -q ^DNS /etc/wireguard/nord.conf'
+check "policy unit not restarted"    bash -c '! grep -q "restart nord-policy" /tmp/systemctl.log'
+check "mark rule never removed"      bash -c '! grep -q "^Deleted.*fwmark" /tmp/rules.log'
+check "mark rule still in place"     bash -c 'vps-nord policy status | grep -q "rule yes, blackhole yes"'
 
 echo "== 3. switch to a server with the same peer key"
 sleep 2
