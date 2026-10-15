@@ -95,6 +95,11 @@ Each of these exists because the alternative failed in practice or in a test.
   `/etc/vps-nord/config` at run time.
 - `save_config` and the initial config use **unquoted** heredocs: never put
   backticks or `$(...)` in comments there — they run on every config write.
+- With `pipefail`, never `cmd | grep -q` (or `| head`, `awk '...exit'`) on
+  output that can be long: the reader exits early, the writer dies of
+  SIGPIPE and the pipeline fails. Match on captured output instead
+  (`has_mark_rule`, `has_blackhole`). Nodes with other VPN agents have
+  long rule lists.
 - Config values are written with `printf '%q'` and read by sourcing the file.
   The installer reads the old config in a subshell and re-emits `OLD_*`
   variables, so a broken config cannot clobber installer variables.

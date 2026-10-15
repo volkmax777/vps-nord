@@ -414,6 +414,14 @@ write_wgconf() { # $1 host, $2 station, $3 pubkey, $4 label
 
 iface_up() { ip link show "$IFACE" >/dev/null 2>&1; }
 
+# Match on captured output, never `ip ... | grep -q`: grep -q exits at the
+# first match, ip gets SIGPIPE on a long rule list and pipefail turns the
+# match into a failure.
+has_mark_rule() {
+  grep -q "fwmark $(printf '0x%x' "$FWMARK") lookup $TABLE" <<<"$(ip -4 rule list pref 3101 2>/dev/null)"
+}
+has_blackhole() { grep -q "^blackhole default" <<<"$(ip -4 route show table "$TABLE" 2>/dev/null)"; }
+
 apply_conf() {
   if iface_up; then
     # Remove the old peer explicitly. All servers in a NordVPN cluster share
@@ -471,7 +479,7 @@ resume() { rm -f "$STATE_DIR/paused"; }
 
 handshake_ts() {
   local ts
-  ts=$(wg show "$IFACE" latest-handshakes 2>/dev/null | awk '{print $2; exit}')
+  ts=$(wg show "$IFACE" latest-handshakes 2>/dev/null | awk 'NR==1{print $2}')
   [[ -n ${ts:-} ]] || ts=0
   echo "$ts"
 }
@@ -606,7 +614,7 @@ cmd_connect() { # $1 region, $2 hostname to skip (for switch)
 cmd_adopt() {
   iface_up || die "interface $IFACE is not up"
   local pk ep host label load
-  pk=$(wg show "$IFACE" peers 2>/dev/null | head -n1)
+  pk=$(wg show "$IFACE" peers 2>/dev/null | awk 'NR==1')
   ep=$(wg show "$IFACE" endpoints 2>/dev/null | awk 'NR==1{print $2}')
   [[ -n ${pk:-} ]] || die "$IFACE has no peer"
   [[ -n ${ep:-} && $ep != "(none)" ]] || die "the $IFACE peer has no endpoint"
@@ -656,14 +664,14 @@ cmd_status() {
   # that — with oif set the kernel sends straight to the device; the rule only
   # makes the route explicit and visible in `ip route`.
   local bind="NO — sockets bound to $IFACE go nowhere"
-  if ip route get 1.1.1.1 oif "$IFACE" 2>/dev/null | grep -q "dev $IFACE"; then
+  if grep -q "dev $IFACE" <<<"$(ip route get 1.1.1.1 oif "$IFACE" 2>/dev/null)"; then
     bind="ok"
   fi
   printf '%-11s %s\n' "Binding:" "$bind"
   if [[ -n ${FWMARK:-} ]]; then
     local mark="no rule — marked traffic bypasses the tunnel"
-    if ip -4 rule list 2>/dev/null | grep -q "fwmark $(printf '0x%x' "$FWMARK") lookup $TABLE"; then
-      if ip -4 route show table "$TABLE" 2>/dev/null | grep -q "^blackhole default"; then
+    if has_mark_rule; then
+      if has_blackhole; then
         mark="$FWMARK → table $TABLE, blackhole in place"
       else
         mark="$FWMARK → table $TABLE, but NO blackhole: traffic leaks if the tunnel drops"
@@ -798,8 +806,7 @@ cmd_policy() {
       fi
       # Add the rule only if it is missing: del + add would leave a moment in
       # which marked traffic has no rule and leaves with the node's real IP.
-      if ! ip -4 rule list pref 3101 2>/dev/null \
-           | grep -q "fwmark $(printf '0x%x' "$FWMARK") lookup $TABLE"; then
+      if ! has_mark_rule; then
         ip -4 rule add fwmark "$FWMARK" table "$TABLE" priority 3101
       fi
       log "mark $FWMARK policy enabled (table $TABLE)"
@@ -811,8 +818,8 @@ cmd_policy() {
       ;;
     status)
       local rule="no" hole="no"
-      if ip -4 rule list 2>/dev/null | grep -q "fwmark $(printf '0x%x' "$FWMARK") lookup $TABLE"; then rule="yes"; fi
-      if ip -4 route show table "$TABLE" 2>/dev/null | grep -q "^blackhole default"; then hole="yes"; fi
+      if has_mark_rule; then rule="yes"; fi
+      if has_blackhole; then hole="yes"; fi
       echo "mark $FWMARK → table $TABLE: rule $rule, blackhole $hole"
       ip -4 route show table "$TABLE" 2>/dev/null | sed 's/^/  /'
       ;;

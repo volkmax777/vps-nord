@@ -54,6 +54,13 @@ check "no DNS line in wg config"     bash -c '! grep -q ^DNS /etc/wireguard/nord
 check "policy unit not restarted"    bash -c '! grep -q "restart nord-policy" /tmp/systemctl.log'
 check "mark rule never removed"      bash -c '! grep -q "^Deleted.*fwmark" /tmp/rules.log'
 check "mark rule still in place"     bash -c 'vps-nord policy status | grep -q "rule yes, blackhole yes"'
+# A long rule list after ours (other VPN agents add many): a check that stops
+# reading at the first match must not turn into "no rule".
+for i in $(seq 1 3000); do echo "rule add fwmark $((1000 + i)) table main priority 3101"; done | ip -batch -
+check "mark rule seen in a long list" bash -c 'for _ in {1..20}; do vps-nord status | grep -q "blackhole in place" || exit 1; done'
+check "policy up with a long list"   bash -c 'for _ in {1..20}; do vps-nord policy up >/dev/null 2>&1 || exit 1; done'
+check "mark rule added only once"    test "$(ip -4 rule list pref 3101 | grep -c 'fwmark 0xfe ')" = 1
+for i in $(seq 1 3000); do echo "rule del fwmark $((1000 + i)) table main priority 3101"; done | ip -batch -
 
 echo "== 3. switch to a server with the same peer key"
 sleep 2
